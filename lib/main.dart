@@ -32,6 +32,9 @@ enum Speed { slow, normal, fast }
 class _HomePageState extends State<HomePage> {
   Speed _selectedSpeed = Speed.normal;
 
+  // 新增speed变量
+  double speed = 0.7;
+
   // 机器人控制相关
   Timer? _timer;
   DateTime? _pressTime;
@@ -60,9 +63,9 @@ class _HomePageState extends State<HomePage> {
 
     if (label == 'F') {
       // 一直前进
-      sendCommand(0, 1.0);
+      sendCommand(0, speed);
       _timer = Timer.periodic(period, (_) {
-        sendCommand(0, 1.0);
+        sendCommand(0, speed);
       });
     } else if (label == 'B') {
       // B：<=4秒一直转动，>4秒前4秒转动，后面前进
@@ -72,7 +75,7 @@ class _HomePageState extends State<HomePage> {
         if (elapsed <= 4000) {
           sendCommand(3.1415926 / 4, 0);
         } else {
-          sendCommand(0, 1.0);
+          sendCommand(0, speed);
         }
       });
     } else if (label == 'L') {
@@ -83,7 +86,7 @@ class _HomePageState extends State<HomePage> {
         if (elapsed <= 2000) {
           sendCommand(3.1415926 / 4, 0);
         } else {
-          sendCommand(0, 1.0);
+          sendCommand(0, speed);
         }
       });
     } else if (label == 'R') {
@@ -94,7 +97,7 @@ class _HomePageState extends State<HomePage> {
         if (elapsed <= 2000) {
           sendCommand(-3.1415926 / 4, 0);
         } else {
-          sendCommand(0, 1.0);
+          sendCommand(0, speed);
         }
       });
     } else if (label == 'FL') {
@@ -105,7 +108,7 @@ class _HomePageState extends State<HomePage> {
         if (elapsed <= 1000) {
           sendCommand(3.1415926 / 4, 0);
         } else {
-          sendCommand(0, 1.0);
+          sendCommand(0, speed);
         }
       });
     } else if (label == 'FR') {
@@ -116,7 +119,7 @@ class _HomePageState extends State<HomePage> {
         if (elapsed <= 1000) {
           sendCommand(-3.1415926 / 4, 0);
         } else {
-          sendCommand(0, 1.0);
+          sendCommand(0, speed);
         }
       });
     } else if (label == 'BL') {
@@ -126,7 +129,7 @@ class _HomePageState extends State<HomePage> {
         if (elapsed <= 3000) {
           sendCommand(3.1415926 / 4, 0);
         } else {
-          sendCommand(0, 1.0);
+          sendCommand(0, speed);
         }
       });
     } else if (label == 'BR') {
@@ -136,7 +139,7 @@ class _HomePageState extends State<HomePage> {
         if (elapsed <= 3000) {
           sendCommand(-3.1415926 / 4, 0);
         } else {
-          sendCommand(0, 1.0);
+          sendCommand(0, speed);
         }
       });
     }
@@ -170,6 +173,7 @@ class _HomePageState extends State<HomePage> {
                 onDirectionPressed: (dir) {
                   debugPrint('Pressed: $dir');
                 },
+                // 改动1：Stop按钮功能，调用stopRobot
                 onCenterPressed: () async {
                   await stopRobot();
                   debugPrint('Pressed: 停');
@@ -249,6 +253,14 @@ pressing "Stop" will halt the robot.''',
           onChanged: (Speed? v) {
             setState(() {
               _selectedSpeed = v!;
+              // 根据选择设置speed变量
+              if (_selectedSpeed == Speed.slow) {
+                speed = 0.4;
+              } else if (_selectedSpeed == Speed.normal) {
+                speed = 0.7;
+              } else if (_selectedSpeed == Speed.fast) {
+                speed = 1.0;
+              }
             });
           },
         ),
@@ -366,6 +378,7 @@ class DirectionPad extends StatelessWidget {
           ),
           // 中间“停”按钮
           GestureDetector(
+            // 改动2：Stop按钮功能，调用onCenterPressed
             onTap: onCenterPressed,
             child: Container(
               width: innerCircle - 10,
