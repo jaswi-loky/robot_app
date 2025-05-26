@@ -173,7 +173,7 @@ class _HomePageState extends State<HomePage> {
                 onDirectionPressed: (dir) {
                   debugPrint('Pressed: $dir');
                 },
-                // 改动1：Stop按钮功能，调用stopRobot
+                // Stop按钮功能，调用stopRobot
                 onCenterPressed: () async {
                   await stopRobot();
                   debugPrint('Pressed: 停');
@@ -299,10 +299,10 @@ class DirectionPad extends StatelessWidget {
   Widget build(BuildContext context) {
     double size = 320 * 1.5;
     double innerCircle = 140 * 1.2;
-    double directionFontSize = 32;
+    double directionFontSize = 36; // 字体更大
     double stopFontSize = 44 * 1.2;
-    double btnWidth = 56 * 1.2;
-    double btnHeight = 56 * 1.2;
+    double btnWidth = 80.0; // 按钮更大
+    double btnHeight = 80.0; // 按钮更大
 
     return SizedBox(
       width: size,
@@ -323,7 +323,8 @@ class DirectionPad extends StatelessWidget {
           ..._labels.asMap().entries.map((entry) {
             final label = entry.value;
             double rad = label.angle * pi / 180;
-            double r = size / 2 - 36 * 1.5;
+            // r变大，避免按钮重叠
+            double r = size / 2 - btnHeight * 0.8;
             double cx = (size / 2) + r * sin(rad);
             double cy = (size / 2) - r * cos(rad);
 
@@ -378,7 +379,6 @@ class DirectionPad extends StatelessWidget {
           ),
           // 中间“停”按钮
           GestureDetector(
-            // 改动2：Stop按钮功能，调用onCenterPressed
             onTap: onCenterPressed,
             child: Container(
               width: innerCircle - 10,
