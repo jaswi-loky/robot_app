@@ -60,9 +60,9 @@ class _HomePageState extends State<HomePage> {
 
     if (label == 'F') {
       // 一直前进
-      sendCommand(0, 0.7);
+      sendCommand(0, 1.0);
       _timer = Timer.periodic(period, (_) {
-        sendCommand(0, 0.7);
+        sendCommand(0, 1.0);
       });
     } else if (label == 'B') {
       // B：<=4秒一直转动，>4秒前4秒转动，后面前进
@@ -72,7 +72,7 @@ class _HomePageState extends State<HomePage> {
         if (elapsed <= 4000) {
           sendCommand(3.1415926 / 4, 0);
         } else {
-          sendCommand(0, 0.7);
+          sendCommand(0, 1.0);
         }
       });
     } else if (label == 'L') {
@@ -83,7 +83,7 @@ class _HomePageState extends State<HomePage> {
         if (elapsed <= 2000) {
           sendCommand(3.1415926 / 4, 0);
         } else {
-          sendCommand(0, 0.7);
+          sendCommand(0, 1.0);
         }
       });
     } else if (label == 'R') {
@@ -94,7 +94,7 @@ class _HomePageState extends State<HomePage> {
         if (elapsed <= 2000) {
           sendCommand(-3.1415926 / 4, 0);
         } else {
-          sendCommand(0, 0.7);
+          sendCommand(0, 1.0);
         }
       });
     }
