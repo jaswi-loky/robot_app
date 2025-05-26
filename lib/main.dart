@@ -97,6 +97,48 @@ class _HomePageState extends State<HomePage> {
           sendCommand(0, 1.0);
         }
       });
+    } else if (label == 'FL') {
+      // FL：<=1秒一直转动，>1秒前1秒转动，后面前进
+      sendCommand(3.1415926 / 4, 0);
+      _timer = Timer.periodic(period, (timer) {
+        final elapsed = DateTime.now().difference(_pressTime!).inMilliseconds;
+        if (elapsed <= 1000) {
+          sendCommand(3.1415926 / 4, 0);
+        } else {
+          sendCommand(0, 1.0);
+        }
+      });
+    } else if (label == 'FR') {
+      // FR：<=1秒一直负角速度转动，>1秒前1秒转动，后面前进
+      sendCommand(-3.1415926 / 4, 0);
+      _timer = Timer.periodic(period, (timer) {
+        final elapsed = DateTime.now().difference(_pressTime!).inMilliseconds;
+        if (elapsed <= 1000) {
+          sendCommand(-3.1415926 / 4, 0);
+        } else {
+          sendCommand(0, 1.0);
+        }
+      });
+    } else if (label == 'BL') {
+      sendCommand(3.1415926 / 4, 0);
+      _timer = Timer.periodic(period, (timer) {
+        final elapsed = DateTime.now().difference(_pressTime!).inMilliseconds;
+        if (elapsed <= 3000) {
+          sendCommand(3.1415926 / 4, 0);
+        } else {
+          sendCommand(0, 1.0);
+        }
+      });
+    } else if (label == 'BR') {
+      sendCommand(-3.1415926 / 4, 0);
+      _timer = Timer.periodic(period, (timer) {
+        final elapsed = DateTime.now().difference(_pressTime!).inMilliseconds;
+        if (elapsed <= 3000) {
+          sendCommand(-3.1415926 / 4, 0);
+        } else {
+          sendCommand(0, 1.0);
+        }
+      });
     }
   }
 
@@ -273,8 +315,8 @@ class DirectionPad extends StatelessWidget {
             double cx = (size / 2) + r * sin(rad);
             double cy = (size / 2) - r * cos(rad);
 
-            // 只对 F/B/L/R 绑定长按控制
-            bool isControl = label.text == 'F' || label.text == 'B' || label.text == 'L' || label.text == 'R';
+            // 绑定长按控制（所有8个方向按钮都支持）
+            bool isControl = true;
 
             return Positioned(
               left: cx - btnWidth / 2,
