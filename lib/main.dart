@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:async';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart'; // 新增
 
 void main() {
   runApp(const UIApp());
@@ -150,6 +151,18 @@ class _HomePageState extends State<HomePage> {
     _pressTime = null;
   }
 
+  // 新增：Webpage按钮点击事件
+  Future<void> _launchWebpage() async {
+    final url = Uri.parse('http://192.168.10.10:8085');
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('无法打开网页')),
+      );
+    }
+  }
+
   @override
   void dispose() {
     _timer?.cancel();
@@ -214,6 +227,32 @@ class _HomePageState extends State<HomePage> {
                       fontSize: 20,
                     ),
                     textAlign: TextAlign.left,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              // 新增Webpage按钮
+              Center(
+                child: GestureDetector(
+                  onTap: _launchWebpage,
+                  child: Container(
+                    width: 180,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: black, width: 2),
+                      borderRadius: BorderRadius.circular(32),
+                      color: Colors.white,
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Webpage',
+                        style: TextStyle(
+                          color: Colors.black,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
