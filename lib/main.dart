@@ -31,13 +31,12 @@ enum Speed { slow, normal, fast }
 
 class _HomePageState extends State<HomePage> {
   Speed _selectedSpeed = Speed.normal;
-
-  // 新增speed变量
   double speed = 0.7;
-
-  // 机器人控制相关
   Timer? _timer;
   DateTime? _pressTime;
+
+  // ESTOP状态
+  bool _estopActive = false;
 
   static const String baseUrl = 'http://192.168.10.10:9001/api/joy_control';
 
@@ -46,13 +45,19 @@ class _HomePageState extends State<HomePage> {
         '$baseUrl?angular_velocity=$angular&linear_velocity=$linear');
     try {
       await http.get(url);
-    } catch (e) {
-      // 可以加日志
-    }
+    } catch (e) {}
   }
 
-  Future<void> stopRobot() async {
-    await sendCommand(0, 0);
+  // ESTOP功能
+  Future<void> toggleEstop() async {
+    setState(() {
+      _estopActive = !_estopActive;
+    });
+    final flag = _estopActive ? 'true' : 'false';
+    final url = Uri.parse('http://192.168.10.10:9001/api/estop?flag=$flag');
+    try {
+      await http.get(url);
+    } catch (e) {}
   }
 
   void handlePress(String label) {
@@ -62,13 +67,11 @@ class _HomePageState extends State<HomePage> {
     Duration period = const Duration(milliseconds: 100);
 
     if (label == 'F') {
-      // 一直前进
       sendCommand(0, speed);
       _timer = Timer.periodic(period, (_) {
         sendCommand(0, speed);
       });
     } else if (label == 'B') {
-      // B：<=4秒一直转动，>4秒前4秒转动，后面前进
       sendCommand(3.1415926 / 4, 0);
       _timer = Timer.periodic(period, (timer) {
         final elapsed = DateTime.now().difference(_pressTime!).inMilliseconds;
@@ -79,7 +82,6 @@ class _HomePageState extends State<HomePage> {
         }
       });
     } else if (label == 'L') {
-      // 左：<=2秒一直转动，>2秒前2秒转动，后面前进
       sendCommand(3.1415926 / 4, 0);
       _timer = Timer.periodic(period, (timer) {
         final elapsed = DateTime.now().difference(_pressTime!).inMilliseconds;
@@ -90,7 +92,6 @@ class _HomePageState extends State<HomePage> {
         }
       });
     } else if (label == 'R') {
-      // 右：<=2秒一直负角速度转动，>2秒前2秒转动，后面前进
       sendCommand(-3.1415926 / 4, 0);
       _timer = Timer.periodic(period, (timer) {
         final elapsed = DateTime.now().difference(_pressTime!).inMilliseconds;
@@ -101,7 +102,6 @@ class _HomePageState extends State<HomePage> {
         }
       });
     } else if (label == 'FL') {
-      // FL：<=1秒一直转动，>1秒前1秒转动，后面前进
       sendCommand(3.1415926 / 4, 0);
       _timer = Timer.periodic(period, (timer) {
         final elapsed = DateTime.now().difference(_pressTime!).inMilliseconds;
@@ -112,7 +112,6 @@ class _HomePageState extends State<HomePage> {
         }
       });
     } else if (label == 'FR') {
-      // FR：<=1秒一直负角速度转动，>1秒前1秒转动，后面前进
       sendCommand(-3.1415926 / 4, 0);
       _timer = Timer.periodic(period, (timer) {
         final elapsed = DateTime.now().difference(_pressTime!).inMilliseconds;
@@ -147,7 +146,7 @@ class _HomePageState extends State<HomePage> {
 
   void handleRelease(String label) async {
     _timer?.cancel();
-    await stopRobot();
+    await sendCommand(0, 0);
     _pressTime = null;
   }
 
@@ -173,14 +172,11 @@ class _HomePageState extends State<HomePage> {
                 onDirectionPressed: (dir) {
                   debugPrint('Pressed: $dir');
                 },
-                // Stop按钮功能，调用stopRobot
-                onCenterPressed: () async {
-                  await stopRobot();
-                  debugPrint('Pressed: 停');
-                },
+                onCenterPressed: toggleEstop,
                 color: black,
                 onDirectionTapDown: handlePress,
                 onDirectionTapUp: handleRelease,
+                estopActive: _estopActive,
               ),
               const SizedBox(height: 80),
               // 速度选项
@@ -212,8 +208,7 @@ class _HomePageState extends State<HomePage> {
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
-                     '''Stop button: If a bug occurs (e.g., the robot keeps moving even after the button is released),
-pressing "Stop" will halt the robot.''',
+                     '''ESTOP: Press to lock the robot - other direction buttons will be disabled and the background turns red. Press again to unlock.''',
                     style: TextStyle(
                       color: black,
                       fontSize: 20,
@@ -253,7 +248,6 @@ pressing "Stop" will halt the robot.''',
           onChanged: (Speed? v) {
             setState(() {
               _selectedSpeed = v!;
-              // 根据选择设置speed变量
               if (_selectedSpeed == Speed.slow) {
                 speed = 0.4;
               } else if (_selectedSpeed == Speed.normal) {
@@ -275,6 +269,7 @@ class DirectionPad extends StatelessWidget {
   final Color color;
   final void Function(String label)? onDirectionTapDown;
   final void Function(String label)? onDirectionTapUp;
+  final bool estopActive;
 
   DirectionPad({
     required this.onDirectionPressed,
@@ -282,6 +277,7 @@ class DirectionPad extends StatelessWidget {
     required this.color,
     this.onDirectionTapDown,
     this.onDirectionTapUp,
+    this.estopActive = false,
   });
 
   final List<_DirectionLabel> _labels = const [
@@ -299,10 +295,10 @@ class DirectionPad extends StatelessWidget {
   Widget build(BuildContext context) {
     double size = 320 * 1.5;
     double innerCircle = 140 * 1.2;
-    double directionFontSize = 36; // 字体更大
-    double stopFontSize = 44 * 1.2;
-    double btnWidth = 80.0; // 按钮更大
-    double btnHeight = 80.0; // 按钮更大
+    double directionFontSize = 36;
+    double estopFontSize = 44 * 0.8; // 字体变为0.7倍
+    double btnWidth = 80.0;
+    double btnHeight = 80.0;
 
     return SizedBox(
       width: size,
@@ -323,12 +319,10 @@ class DirectionPad extends StatelessWidget {
           ..._labels.asMap().entries.map((entry) {
             final label = entry.value;
             double rad = label.angle * pi / 180;
-            // r变大，避免按钮重叠
             double r = size / 2 - btnHeight * 0.8;
             double cx = (size / 2) + r * sin(rad);
             double cy = (size / 2) - r * cos(rad);
 
-            // 绑定长按控制（所有8个方向按钮都支持）
             bool isControl = true;
 
             return Positioned(
@@ -367,17 +361,7 @@ class DirectionPad extends StatelessWidget {
               ),
             );
           }).toList(),
-          // 小圆背景
-          Container(
-            width: innerCircle,
-            height: innerCircle,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: color, width: 3),
-              color: Colors.white,
-            ),
-          ),
-          // 中间“停”按钮
+          // 只保留ESTOP按钮小圆圈（无多余小圆背景）
           GestureDetector(
             onTap: onCenterPressed,
             child: Container(
@@ -386,13 +370,17 @@ class DirectionPad extends StatelessWidget {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.transparent,
+                color: estopActive ? const Color(0xFFFFA0A0) : Colors.white,
+                border: Border.all(
+                  color: estopActive ? Colors.red : color,
+                  width: 4,
+                ),
               ),
               child: Text(
-                'Stop',
+                'ESTOP',
                 style: TextStyle(
-                  color: color,
-                  fontSize: stopFontSize,
+                  color: estopActive ? Colors.red : color,
+                  fontSize: estopFontSize,
                   fontWeight: FontWeight.bold,
                 ),
               ),
