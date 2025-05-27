@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:math';
 import 'dart:async';
 import 'package:http/http.dart' as http;
-import 'package:url_launcher/url_launcher.dart'; // 新增
+import 'package:webview_flutter/webview_flutter.dart';
 
 void main() {
   runApp(const UIApp());
@@ -151,16 +151,13 @@ class _HomePageState extends State<HomePage> {
     _pressTime = null;
   }
 
-  // 新增：Webpage按钮点击事件
-  Future<void> _launchWebpage() async {
-    final url = Uri.parse('http://192.168.10.10:8085');
-    if (await canLaunchUrl(url)) {
-      await launchUrl(url, mode: LaunchMode.externalApplication);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('无法打开网页')),
-      );
-    }
+  // 修改：Webpage按钮点击事件，使用WebView内嵌网页
+  void _openWebPageInApp() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const WebPageScreen(),
+      ),
+    );
   }
 
   @override
@@ -231,10 +228,10 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 24),
-              // 新增Webpage按钮
+              // 修改Webpage按钮
               Center(
                 child: GestureDetector(
-                  onTap: _launchWebpage,
+                  onTap: _openWebPageInApp,
                   child: Container(
                     width: 180,
                     height: 56,
@@ -298,6 +295,61 @@ class _HomePageState extends State<HomePage> {
           },
         ),
       ],
+    );
+  }
+}
+
+class WebPageScreen extends StatefulWidget {
+  const WebPageScreen({super.key});
+
+  @override
+  State<WebPageScreen> createState() => _WebPageScreenState();
+}
+
+class _WebPageScreenState extends State<WebPageScreen> {
+  bool _isLoading = true;
+  late final WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..setBackgroundColor(const Color(0x00000000))
+      ..setNavigationDelegate(NavigationDelegate(
+        onPageStarted: (url) {
+          setState(() {
+            _isLoading = true;
+          });
+        },
+        onPageFinished: (url) {
+          setState(() {
+            _isLoading = false;
+          });
+        },
+        // 你可以加onWebResourceError回调等
+      ))
+      ..loadRequest(Uri.parse('http://192.168.10.10:8085'));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('WebPage'),
+        backgroundColor: Colors.deepPurple,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
+      body: Stack(
+        children: [
+          WebViewWidget(controller: _controller),
+          if (_isLoading)
+            const Center(child: CircularProgressIndicator()),
+        ],
+      ),
     );
   }
 }
