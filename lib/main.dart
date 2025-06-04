@@ -36,12 +36,24 @@ class _HomePageState extends State<HomePage> {
   Timer? _timer;
   DateTime? _pressTime;
 
+  // 按钮按下状态
+  final Map<String, bool> _buttonPressed = {
+    'F': false, 'B': false, 'L': false, 'R': false,
+    'FL': false, 'FR': false, 'BL': false, 'BR': false,
+  };
+
+  // 记录当前直行的速度
+  double _lastLinear = 0;
+  double _lastAngular = 0;
+
   // ESTOP状态
   bool _estopActive = false;
 
   static const String baseUrl = 'http://192.168.10.10:9001/api/joy_control';
 
   Future<void> sendCommand(double angular, double linear) async {
+    _lastAngular = angular;
+    _lastLinear = linear;
     final url = Uri.parse(
         '$baseUrl?angular_velocity=$angular&linear_velocity=$linear');
     try {
@@ -62,6 +74,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   void handlePress(String label) {
+    setState(() {
+      _buttonPressed[label] = true;
+    });
     _pressTime = DateTime.now();
     _timer?.cancel();
 
@@ -146,12 +161,38 @@ class _HomePageState extends State<HomePage> {
   }
 
   void handleRelease(String label) async {
+    setState(() {
+      _buttonPressed[label] = false;
+    });
     _timer?.cancel();
-    await sendCommand(0, 0);
+
+    // 判断如果是直行并且速度不为0，则惯性减速
+    if (_lastAngular == 0 && _lastLinear.abs() > 0.01) {
+      double currentLinear = _lastLinear;
+      double step = currentLinear.abs() / 10; // 分10步减速
+      if (step < 0.01) step = 0.01;
+      Timer.periodic(const Duration(milliseconds: 50), (timer) {
+        if (currentLinear.abs() <= 0.01) {
+          sendCommand(0, 0);
+          timer.cancel();
+        } else {
+          // 负加速度，向0靠拢
+          if (currentLinear > 0) {
+            currentLinear -= step;
+            if (currentLinear < 0) currentLinear = 0;
+          } else {
+            currentLinear += step;
+            if (currentLinear > 0) currentLinear = 0;
+          }
+          sendCommand(0, currentLinear);
+        }
+      });
+    } else {
+      await sendCommand(0, 0);
+    }
     _pressTime = null;
   }
 
-  // 修改：Webpage按钮点击事件，使用WebView内嵌网页
   void _openWebPageInApp() {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -187,6 +228,7 @@ class _HomePageState extends State<HomePage> {
                 onDirectionTapDown: handlePress,
                 onDirectionTapUp: handleRelease,
                 estopActive: _estopActive,
+                buttonPressed: _buttonPressed,
               ),
               const SizedBox(height: 80),
               // 速度选项
@@ -361,6 +403,7 @@ class DirectionPad extends StatelessWidget {
   final void Function(String label)? onDirectionTapDown;
   final void Function(String label)? onDirectionTapUp;
   final bool estopActive;
+  final Map<String, bool> buttonPressed;
 
   DirectionPad({
     required this.onDirectionPressed,
@@ -369,6 +412,7 @@ class DirectionPad extends StatelessWidget {
     this.onDirectionTapDown,
     this.onDirectionTapUp,
     this.estopActive = false,
+    required this.buttonPressed,
   });
 
   final List<_DirectionLabel> _labels = const [
@@ -390,6 +434,9 @@ class DirectionPad extends StatelessWidget {
     double estopFontSize = 44 * 0.8; // 字体变为0.7倍
     double btnWidth = 80.0;
     double btnHeight = 80.0;
+
+    // 红色，与ESTOP激活时一致
+    Color pressedColor = Colors.red;
 
     return SizedBox(
       width: size,
@@ -415,6 +462,7 @@ class DirectionPad extends StatelessWidget {
             double cy = (size / 2) - r * cos(rad);
 
             bool isControl = true;
+            bool isPressed = buttonPressed[label.text] ?? false;
 
             return Positioned(
               left: cx - btnWidth / 2,
@@ -441,7 +489,7 @@ class DirectionPad extends StatelessWidget {
                   child: Text(
                     label.text,
                     style: TextStyle(
-                      color: color,
+                      color: isPressed ? pressedColor : color,
                       fontSize: directionFontSize,
                       fontWeight: FontWeight.bold,
                     ),
@@ -452,7 +500,7 @@ class DirectionPad extends StatelessWidget {
               ),
             );
           }).toList(),
-          // 只保留ESTOP按钮小圆圈（无多余小圆背景）
+          // ESTOP按钮
           GestureDetector(
             onTap: onCenterPressed,
             child: Container(
