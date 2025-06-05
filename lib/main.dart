@@ -36,17 +36,13 @@ class _HomePageState extends State<HomePage> {
   Timer? _timer;
   DateTime? _pressTime;
 
-  // 按钮按下状态
   final Map<String, bool> _buttonPressed = {
     'F': false, 'B': false, 'L': false, 'R': false,
     'FL': false, 'FR': false, 'BL': false, 'BR': false,
   };
 
-  // 记录当前直行的速度
   double _lastLinear = 0;
   double _lastAngular = 0;
-
-  // ESTOP状态
   bool _estopActive = false;
 
   static const String baseUrl = 'http://192.168.10.10:9001/api/joy_control';
@@ -61,7 +57,6 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {}
   }
 
-  // ESTOP功能
   Future<void> toggleEstop() async {
     setState(() {
       _estopActive = !_estopActive;
@@ -166,17 +161,15 @@ class _HomePageState extends State<HomePage> {
     });
     _timer?.cancel();
 
-    // 判断如果是直行并且速度不为0，则惯性减速
     if (_lastAngular == 0 && _lastLinear.abs() > 0.01) {
       double currentLinear = _lastLinear;
-      double step = currentLinear.abs() / 10; // 分10步减速
+      double step = currentLinear.abs() / 10;
       if (step < 0.01) step = 0.01;
       Timer.periodic(const Duration(milliseconds: 50), (timer) {
         if (currentLinear.abs() <= 0.01) {
           sendCommand(0, 0);
           timer.cancel();
         } else {
-          // 负加速度，向0靠拢
           if (currentLinear > 0) {
             currentLinear -= step;
             if (currentLinear < 0) currentLinear = 0;
@@ -218,7 +211,6 @@ class _HomePageState extends State<HomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 圆形方向按钮
               DirectionPad(
                 onDirectionPressed: (dir) {
                   debugPrint('Pressed: $dir');
@@ -231,7 +223,6 @@ class _HomePageState extends State<HomePage> {
                 buttonPressed: _buttonPressed,
               ),
               const SizedBox(height: 80),
-              // 速度选项
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32.0),
                 child: Align(
@@ -254,7 +245,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 28),
-              // 说明文字
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32.0),
                 child: Align(
@@ -270,7 +260,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
               const SizedBox(height: 24),
-              // 修改Webpage按钮
               Center(
                 child: GestureDetector(
                   onTap: _openWebPageInApp,
@@ -369,7 +358,6 @@ class _WebPageScreenState extends State<WebPageScreen> {
             _isLoading = false;
           });
         },
-        // 你可以加onWebResourceError回调等
       ))
       ..loadRequest(Uri.parse('http://192.168.10.10:8085'));
   }
@@ -428,15 +416,13 @@ class DirectionPad extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    double size = 320 * 1.5;
-    double innerCircle = 140 * 1.2;
-    double directionFontSize = 36;
-    double estopFontSize = 44 * 0.8; // 字体变为0.7倍
-    double btnWidth = 80.0;
-    double btnHeight = 80.0;
-
-    // 红色，与ESTOP激活时一致
+    double screen = MediaQuery.of(context).size.shortestSide;
+    double size = screen * 0.7;
+    double innerCircle = size * 0.36;
+    double directionFontSize = size * 0.09;
     Color pressedColor = Colors.red;
+    Color pressedBg = const Color(0xFFFFA0A0);
+    double highlightRadius = size * 0.12;
 
     return SizedBox(
       width: size,
@@ -444,7 +430,6 @@ class DirectionPad extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // 大圆背景
           Container(
             width: size,
             height: size,
@@ -453,63 +438,69 @@ class DirectionPad extends StatelessWidget {
               border: Border.all(color: color, width: 3),
             ),
           ),
-          // 8个方向按钮
-          ..._labels.asMap().entries.map((entry) {
-            final label = entry.value;
+          ..._labels.map((label) {
             double rad = label.angle * pi / 180;
-            double r = size / 2 - btnHeight * 0.8;
+            double r = size/2 - highlightRadius - 12;
             double cx = (size / 2) + r * sin(rad);
             double cy = (size / 2) - r * cos(rad);
-
-            bool isControl = true;
             bool isPressed = buttonPressed[label.text] ?? false;
 
             return Positioned(
-              left: cx - btnWidth / 2,
-              top: cy - btnHeight / 2,
+              left: cx - highlightRadius,
+              top: cy - highlightRadius,
               child: GestureDetector(
                 onTap: () => onDirectionPressed(label.text),
-                onTapDown: isControl && onDirectionTapDown != null
+                onTapDown: onDirectionTapDown != null
                     ? (_) => onDirectionTapDown!(label.text)
                     : null,
-                onTapUp: isControl && onDirectionTapUp != null
+                onTapUp: onDirectionTapUp != null
                     ? (_) => onDirectionTapUp!(label.text)
                     : null,
-                onTapCancel: isControl && onDirectionTapUp != null
+                onTapCancel: onDirectionTapUp != null
                     ? () => onDirectionTapUp!(label.text)
                     : null,
                 child: Container(
-                  width: btnWidth,
-                  height: btnHeight,
+                  width: highlightRadius * 2,
+                  height: highlightRadius * 2,
                   alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    borderRadius: BorderRadius.circular(btnHeight / 2),
-                  ),
-                  child: Text(
-                    label.text,
-                    style: TextStyle(
-                      color: isPressed ? pressedColor : color,
-                      fontSize: directionFontSize,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      if (isPressed)
+                        Container(
+                          width: highlightRadius * 2,
+                          height: highlightRadius * 2,
+                          decoration: BoxDecoration(
+                            color: pressedBg,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      Text(
+                        label.text,
+                        style: TextStyle(
+                          color: isPressed ? pressedColor : color,
+                          fontSize: directionFontSize,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.visible,
+                      ),
+                    ],
                   ),
                 ),
               ),
             );
-          }).toList(),
-          // ESTOP按钮
+          }),
           GestureDetector(
             onTap: onCenterPressed,
             child: Container(
-              width: innerCircle - 10,
-              height: innerCircle - 10,
+              width: innerCircle,
+              height: innerCircle,
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: estopActive ? const Color(0xFFFFA0A0) : Colors.white,
+                color: estopActive ? pressedBg : Colors.white,
                 border: Border.all(
                   color: estopActive ? Colors.red : color,
                   width: 4,
@@ -519,7 +510,7 @@ class DirectionPad extends StatelessWidget {
                 'ESTOP',
                 style: TextStyle(
                   color: estopActive ? Colors.red : color,
-                  fontSize: estopFontSize,
+                  fontSize: 44 * 0.8,
                   fontWeight: FontWeight.bold,
                 ),
               ),
